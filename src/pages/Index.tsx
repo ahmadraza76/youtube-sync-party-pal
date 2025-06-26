@@ -16,7 +16,7 @@ interface Room {
   videoId: string;
 }
 
-interface ChatMessage {
+interface ChatMessageType {
   id: string;
   user: string;
   message: string;
@@ -28,7 +28,7 @@ const Index = () => {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [showAdBanner, setShowAdBanner] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -45,7 +45,7 @@ const Index = () => {
 
   useEffect(() => {
     // Initialize with sample messages
-    const sampleMessages: ChatMessage[] = [
+    const sampleMessages: ChatMessageType[] = [
       { id: '1', user: 'System', message: 'Welcome to YouTube Party!', timestamp: new Date() },
       { id: '2', user: 'Host', message: 'Welcome to the room!', isHost: true, timestamp: new Date() },
       { id: '3', user: 'MovieFan22', message: 'What should we watch next?', timestamp: new Date() },
@@ -62,7 +62,7 @@ const Index = () => {
   const joinRoom = (room: Room) => {
     setCurrentRoom(room);
     // Clear chat and add welcome message
-    const welcomeMessage: ChatMessage = {
+    const welcomeMessage: ChatMessageType = {
       id: Date.now().toString(),
       user: 'System',
       message: `You joined ${room.name}`,
@@ -84,7 +84,7 @@ const Index = () => {
 
   const sendMessage = () => {
     if (newMessage.trim()) {
-      const message: ChatMessage = {
+      const message: ChatMessageType = {
         id: Date.now().toString(),
         user: username,
         message: newMessage.trim(),
@@ -96,7 +96,7 @@ const Index = () => {
       // Simulate response
       setTimeout(() => {
         const responses = ["Great point!", "I agree!", "Let's watch that next!", "Thanks for joining!"];
-        const response: ChatMessage = {
+        const response: ChatMessageType = {
           id: (Date.now() + 1).toString(),
           user: 'Host',
           message: responses[Math.floor(Math.random() * responses.length)],
