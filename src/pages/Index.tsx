@@ -7,6 +7,16 @@ import AdminPanel from '@/components/AdminPanel';
 import RoomCard from '@/components/RoomCard';
 import ChatMessage from '@/components/ChatMessage';
 import AdBanner from '@/components/AdBanner';
+import VideoLinkInput from '@/components/VideoLinkInput';
+import { 
+  mockRooms, 
+  mockChatMessages, 
+  mockUsers,
+  getRoomById, 
+  getChatMessagesByRoom, 
+  addChatMessage,
+  addNewVideo
+} from '@/data/mockData';
 
 interface Room {
   id: number;
@@ -14,6 +24,9 @@ interface Room {
   category: string;
   viewers: number;
   videoId: string;
+  hostName?: string;
+  isLive?: boolean;
+  description?: string;
 }
 
 interface ChatMessageType {
@@ -26,32 +39,22 @@ interface ChatMessageType {
 
 const Index = () => {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [isVideoLinkInputOpen, setIsVideoLinkInputOpen] = useState(false);
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [showAdBanner, setShowAdBanner] = useState(true);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
+  const [rooms, setRooms] = useState<Room[]>(mockRooms);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  const rooms: Room[] = [
-    { id: 1, name: "Chill Music Vibes", category: "Pop, Rock, Hip Hop", viewers: 12, videoId: "5qap5aO4i9A" },
-    { id: 2, name: "Gaming Streamers", category: "Live Gameplay", viewers: 8, videoId: "dQw4w9WgXcQ" },
-    { id: 3, name: "Movie Night", category: "Classic Films", viewers: 24, videoId: "9bZkp7q19f0" },
-    { id: 4, name: "Study Focus", category: "Lofi Beats", viewers: 5, videoId: "jfKfPfyJRdk" }
-  ];
 
   const username = `User${Math.floor(Math.random() * 1000)}`;
 
   useEffect(() => {
     // Initialize with sample messages
-    const sampleMessages: ChatMessageType[] = [
-      { id: '1', user: 'System', message: 'Welcome to YouTube Party!', timestamp: new Date() },
-      { id: '2', user: 'Host', message: 'Welcome to the room!', isHost: true, timestamp: new Date() },
-      { id: '3', user: 'MovieFan22', message: 'What should we watch next?', timestamp: new Date() },
-    ];
-    setChatMessages(sampleMessages);
+    setChatMessages(mockChatMessages.slice(0, 3));
   }, []);
 
   useEffect(() => {
@@ -66,14 +69,25 @@ const Index = () => {
     setCurrentVideoUrl(embedUrl);
     setIsPlaying(true);
     
-    // Clear chat and add welcome message
-    const welcomeMessage: ChatMessageType = {
-      id: Date.now().toString(),
-      user: 'System',
-      message: `You joined ${room.name}`,
-      timestamp: new Date()
-    };
-    setChatMessages([welcomeMessage]);
+    // Load room-specific chat messages
+    const roomMessages = getChatMessagesByRoom(room.id);
+    if (roomMessages.length > 0) {
+      setChatMessages(roomMessages);
+    } else {
+      // Add welcome message if no existing messages
+      const welcomeMessage: ChatMessageType = {
+        id: Date.now().toString(),
+        user: 'System',
+        message: `You joined ${room.name}`,
+        timestamp: new Date()
+      };
+      setChatMessages([welcomeMessage]);
+    }
+
+    // Update room viewer count
+    setRooms(prev => prev.map(r => 
+      r.id === room.id ? { ...r, viewers: r.viewers + 1 } : r
+    ));
   };
 
   const togglePlayPause = () => {
@@ -89,28 +103,54 @@ const Index = () => {
   };
 
   const sendMessage = () => {
-    if (newMessage.trim()) {
+    if (newMessage.trim() && currentRoom) {
       const message: ChatMessageType = {
         id: Date.now().toString(),
         user: username,
         message: newMessage.trim(),
         timestamp: new Date()
       };
+      
+      // Add to local state
       setChatMessages(prev => [...prev, message]);
+      
+      // Add to mock data
+      addChatMessage({
+        user: username,
+        message: newMessage.trim(),
+        roomId: currentRoom.id
+      });
+      
       setNewMessage('');
 
-      // Simulate response
+      // Simulate host/user responses
       setTimeout(() => {
-        const responses = ["Great point!", "I agree!", "Let's watch that next!", "Thanks for joining!"];
+        const responses = [
+          "Great point!", 
+          "I agree!", 
+          "Let's watch that next!", 
+          "Thanks for joining!",
+          "Nice choice! 👍",
+          "Love this video!",
+          "What should we watch after this?"
+        ];
         const response: ChatMessageType = {
           id: (Date.now() + 1).toString(),
-          user: 'Host',
+          user: currentRoom.hostName || 'Host',
           message: responses[Math.floor(Math.random() * responses.length)],
           isHost: true,
           timestamp: new Date()
         };
         setChatMessages(prev => [...prev, response]);
-      }, 1000);
+        
+        // Add to mock data
+        addChatMessage({
+          user: currentRoom.hostName || 'Host',
+          message: response.message,
+          isHost: true,
+          roomId: currentRoom.id
+        });
+      }, 1000 + Math.random() * 2000);
     }
   };
 
@@ -122,17 +162,61 @@ const Index = () => {
       const shareMessage: ChatMessageType = {
         id: Date.now().toString(),
         user: 'System',
-        message: 'Room link copied to clipboard!',
+        message: 'Room link copied to clipboard! 📋',
         timestamp: new Date()
       };
       setChatMessages(prev => [...prev, shareMessage]);
     }
   };
 
+  const handleAddVideo = (videoId: string, title: string) => {
+    // Add new video to mock data
+    const newVideo = addNewVideo({
+      title,
+      videoId,
+      duration: 'N/A',
+      thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+      addedBy: username
+    });
+
+    // Create a new room with this video
+    const newRoom: Room = {
+      id: Math.max(...rooms.map(r => r.id)) + 1,
+      name: title,
+      category: 'User Added',
+      viewers: 1,
+      videoId: videoId,
+      hostName: username,
+      isLive: true,
+      description: `Added by ${username}`
+    };
+
+    setRooms(prev => [...prev, newRoom]);
+    
+    // Auto-join the new room
+    joinRoom(newRoom);
+
+    // Show success message
+    const successMessage: ChatMessageType = {
+      id: Date.now().toString(),
+      user: 'System',
+      message: `✅ Video "${title}" added successfully! Now playing...`,
+      timestamp: new Date()
+    };
+    setChatMessages(prev => [...prev, successMessage]);
+  };
+
   return (
     <div className="max-w-md mx-auto bg-gray-800 min-h-screen flex flex-col border-l border-r border-gray-700">
       <AdminPanel isOpen={isAdminPanelOpen} onClose={() => setIsAdminPanelOpen(false)} />
       
+      {isVideoLinkInputOpen && (
+        <VideoLinkInput
+          onAddVideo={handleAddVideo}
+          onClose={() => setIsVideoLinkInputOpen(false)}
+        />
+      )}
+
       {/* Header */}
       <header className="bg-gradient-to-r from-gray-900 to-gray-950 text-white p-4 shadow-lg border-b border-gray-800">
         <div className="flex justify-between items-center">
@@ -181,7 +265,7 @@ const Index = () => {
                   <div className="text-center">
                     <Youtube className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                     <p className="text-gray-400 text-lg font-medium">Join a room to start watching</p>
-                    <p className="text-gray-500 text-sm mt-2">Select any room below to begin</p>
+                    <p className="text-gray-500 text-sm mt-2">Select any room below or add your own video</p>
                   </div>
                 </div>
               )}
@@ -194,7 +278,7 @@ const Index = () => {
                 {currentRoom ? currentRoom.name : "Join a room to start watching"}
               </h2>
               <p className="text-gray-400 text-sm">
-                {currentRoom ? `${currentRoom.viewers} viewers • Live chat active` : "0 viewers • Select a room to join"}
+                {currentRoom ? `${currentRoom.viewers} viewers • Live chat active • Host: ${currentRoom.hostName || 'Host'}` : "0 viewers • Select a room to join"}
               </p>
             </div>
             <Button onClick={shareRoom} className="bg-black text-white p-2 rounded-full hover:bg-gray-700 transition-colors">
@@ -223,7 +307,7 @@ const Index = () => {
                 {currentRoom ? currentRoom.name.charAt(0) : 'H'}
               </div>
               <span className="font-medium text-white">
-                {currentRoom ? `${currentRoom.name} Host` : 'Room Host'}
+                {currentRoom ? `${currentRoom.hostName || 'Host'}` : 'Room Host'}
               </span>
             </div>
             <Button className="bg-black text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-800 transition-colors">
@@ -235,9 +319,13 @@ const Index = () => {
         {/* Room Selection */}
         <div className="mb-6">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="font-bold text-lg text-white">Available Rooms</h3>
-            <Button className="text-blue-400 text-sm font-medium bg-transparent hover:bg-gray-700 px-3 py-1 rounded-lg">
-              Create Room
+            <h3 className="font-bold text-lg text-white">Available Rooms ({rooms.length})</h3>
+            <Button 
+              onClick={() => setIsVideoLinkInputOpen(true)}
+              className="text-blue-400 text-sm font-medium bg-transparent hover:bg-gray-700 px-3 py-1 rounded-lg border border-blue-400 hover:border-blue-300"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add Video
             </Button>
           </div>
 
@@ -260,7 +348,7 @@ const Index = () => {
             </h3>
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-xs text-gray-400">{currentRoom ? currentRoom.viewers : 0} online</span>
+              <span className="text-xs text-gray-400">{currentRoom ? currentRoom.viewers : mockUsers.filter(u => u.isOnline).length} online</span>
             </div>
           </div>
 
@@ -278,15 +366,17 @@ const Index = () => {
           <div className="flex space-x-2">
             <Input
               type="text"
-              placeholder="Type a message..."
+              placeholder={currentRoom ? "Type a message..." : "Join a room to chat..."}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              className="flex-1 border-gray-600 bg-gray-700 text-white placeholder-gray-400 focus:ring-gray-500"
+              disabled={!currentRoom}
+              className="flex-1 border-gray-600 bg-gray-700 text-white placeholder-gray-400 focus:ring-gray-500 disabled:opacity-50"
             />
             <Button 
               onClick={sendMessage} 
-              className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-4 py-2 rounded-lg hover:from-pink-600 hover:to-red-600 transition-all"
+              disabled={!currentRoom || !newMessage.trim()}
+              className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-4 py-2 rounded-lg hover:from-pink-600 hover:to-red-600 transition-all disabled:opacity-50"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -305,7 +395,10 @@ const Index = () => {
           <Button className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent transition-all">
             <Search className="w-5 h-5" />
           </Button>
-          <Button className="p-3 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-full shadow-lg hover:shadow-pink-500/30 transition-all">
+          <Button 
+            onClick={() => setIsVideoLinkInputOpen(true)}
+            className="p-3 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-full shadow-lg hover:shadow-pink-500/30 transition-all"
+          >
             <Plus className="w-5 h-5" />
           </Button>
           <Button className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent transition-all">
