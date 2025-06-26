@@ -1,13 +1,13 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Share, Users, Home, Search, Plus, Settings, User, Youtube } from 'lucide-react';
+import { Play, Pause, Share, Users, Home, Search, Plus, Settings, User, Youtube, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AdminPanel from '@/components/AdminPanel';
 import RoomCard from '@/components/RoomCard';
 import ChatMessage from '@/components/ChatMessage';
 import AdBanner from '@/components/AdBanner';
-import VideoLinkInput from '@/components/VideoLinkInput';
+import RoomVideoManager from '@/components/RoomVideoManager';
 import { 
   mockRooms, 
   mockChatMessages, 
@@ -37,9 +37,17 @@ interface ChatMessageType {
   timestamp: Date;
 }
 
+interface Video {
+  id: string;
+  title: string;
+  videoId: string;
+  duration: string;
+  addedBy: string;
+  addedAt: Date;
+}
+
 const Index = () => {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
-  const [isVideoLinkInputOpen, setIsVideoLinkInputOpen] = useState(false);
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([]);
@@ -47,13 +55,14 @@ const Index = () => {
   const [showAdBanner, setShowAdBanner] = useState(true);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
   const [rooms, setRooms] = useState<Room[]>(mockRooms);
+  const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
+  const [videoQueue, setVideoQueue] = useState<Video[]>([]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const username = `User${Math.floor(Math.random() * 1000)}`;
 
   useEffect(() => {
-    // Initialize with sample messages
     setChatMessages(mockChatMessages.slice(0, 3));
   }, []);
 
@@ -65,6 +74,18 @@ const Index = () => {
 
   const joinRoom = (room: Room) => {
     setCurrentRoom(room);
+    
+    // Set initial video from room
+    const initialVideo: Video = {
+      id: '1',
+      title: room.name,
+      videoId: room.videoId,
+      duration: 'N/A',
+      addedBy: room.hostName || 'Host',
+      addedAt: new Date()
+    };
+    
+    setCurrentVideo(initialVideo);
     const embedUrl = `https://www.youtube.com/embed/${room.videoId}?autoplay=1&enablejsapi=1&origin=${window.location.origin}`;
     setCurrentVideoUrl(embedUrl);
     setIsPlaying(true);
@@ -74,11 +95,10 @@ const Index = () => {
     if (roomMessages.length > 0) {
       setChatMessages(roomMessages);
     } else {
-      // Add welcome message if no existing messages
       const welcomeMessage: ChatMessageType = {
         id: Date.now().toString(),
         user: 'System',
-        message: `You joined ${room.name}`,
+        message: `Welcome to ${room.name}! 🎬`,
         timestamp: new Date()
       };
       setChatMessages([welcomeMessage]);
@@ -90,16 +110,99 @@ const Index = () => {
     ));
   };
 
+  const leaveRoom = () => {
+    if (currentRoom) {
+      setRooms(prev => prev.map(r => 
+        r.id === currentRoom.id ? { ...r, viewers: Math.max(0, r.viewers - 1) } : r
+      ));
+    }
+    setCurrentRoom(null);
+    setCurrentVideo(null);
+    setVideoQueue([]);
+    setCurrentVideoUrl('');
+    setIsPlaying(false);
+    setChatMessages([]);
+  };
+
   const togglePlayPause = () => {
-    if (iframeRef.current && currentRoom) {
+    if (iframeRef.current && currentVideo) {
       const iframe = iframeRef.current;
       const newUrl = isPlaying 
-        ? `https://www.youtube.com/embed/${currentRoom.videoId}?autoplay=0&enablejsapi=1&origin=${window.location.origin}`
-        : `https://www.youtube.com/embed/${currentRoom.videoId}?autoplay=1&enablejsapi=1&origin=${window.location.origin}`;
+        ? `https://www.youtube.com/embed/${currentVideo.videoId}?autoplay=0&enablejsapi=1&origin=${window.location.origin}`
+        : `https://www.youtube.com/embed/${currentVideo.videoId}?autoplay=1&enablejsapi=1&origin=${window.location.origin}`;
       
       iframe.src = newUrl;
       setIsPlaying(!isPlaying);
     }
+  };
+
+  const handleVideoSelect = (video: Video) => {
+    // Move current video to queue if exists
+    if (currentVideo) {
+      setVideoQueue(prev => [currentVideo, ...prev.filter(v => v.id !== video.id)]);
+    }
+    
+    // Set new current video
+    setCurrentVideo(video);
+    const embedUrl = `https://www.youtube.com/embed/${video.videoId}?autoplay=1&enablejsapi=1&origin=${window.location.origin}`;
+    setCurrentVideoUrl(embedUrl);
+    setIsPlaying(true);
+    
+    // Remove from queue
+    setVideoQueue(prev => prev.filter(v => v.id !== video.id));
+    
+    // Add chat message
+    const playMessage: ChatMessageType = {
+      id: Date.now().toString(),
+      user: 'System',
+      message: `🎵 Now playing: ${video.title}`,
+      timestamp: new Date()
+    };
+    setChatMessages(prev => [...prev, playMessage]);
+  };
+
+  const handleVideoAdd = (videoId: string, title: string) => {
+    const newVideo: Video = {
+      id: Date.now().toString(),
+      title,
+      videoId,
+      duration: 'N/A',
+      addedBy: username,
+      addedAt: new Date()
+    };
+
+    // Add to queue
+    setVideoQueue(prev => [...prev, newVideo]);
+    
+    // Add to mock data
+    addNewVideo({
+      title,
+      videoId,
+      duration: 'N/A',
+      thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+      addedBy: username
+    });
+
+    // Show success message
+    const successMessage: ChatMessageType = {
+      id: (Date.now() + 1).toString(),
+      user: 'System',
+      message: `✅ "${title}" added to queue by ${username}`,
+      timestamp: new Date()
+    };
+    setChatMessages(prev => [...prev, successMessage]);
+  };
+
+  const handleVideoRemove = (videoId: string) => {
+    setVideoQueue(prev => prev.filter(v => v.id !== videoId));
+    
+    const removeMessage: ChatMessageType = {
+      id: Date.now().toString(),
+      user: 'System',
+      message: `🗑️ Video removed from queue`,
+      timestamp: new Date()
+    };
+    setChatMessages(prev => [...prev, removeMessage]);
   };
 
   const sendMessage = () => {
@@ -111,10 +214,7 @@ const Index = () => {
         timestamp: new Date()
       };
       
-      // Add to local state
       setChatMessages(prev => [...prev, message]);
-      
-      // Add to mock data
       addChatMessage({
         user: username,
         message: newMessage.trim(),
@@ -123,16 +223,16 @@ const Index = () => {
       
       setNewMessage('');
 
-      // Simulate host/user responses
+      // Simulate responses
       setTimeout(() => {
         const responses = [
-          "Great point!", 
-          "I agree!", 
-          "Let's watch that next!", 
-          "Thanks for joining!",
-          "Nice choice! 👍",
+          "Great choice!", 
           "Love this video!",
-          "What should we watch after this?"
+          "Thanks for adding!", 
+          "What's next?",
+          "Nice one! 👍",
+          "Let's watch this!",
+          "Good addition to the queue!"
         ];
         const response: ChatMessageType = {
           id: (Date.now() + 1).toString(),
@@ -143,7 +243,6 @@ const Index = () => {
         };
         setChatMessages(prev => [...prev, response]);
         
-        // Add to mock data
         addChatMessage({
           user: currentRoom.hostName || 'Host',
           message: response.message,
@@ -169,69 +268,35 @@ const Index = () => {
     }
   };
 
-  const handleAddVideo = (videoId: string, title: string) => {
-    // Add new video to mock data
-    const newVideo = addNewVideo({
-      title,
-      videoId,
-      duration: 'N/A',
-      thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-      addedBy: username
-    });
-
-    // Create a new room with this video
-    const newRoom: Room = {
-      id: Math.max(...rooms.map(r => r.id)) + 1,
-      name: title,
-      category: 'User Added',
-      viewers: 1,
-      videoId: videoId,
-      hostName: username,
-      isLive: true,
-      description: `Added by ${username}`
-    };
-
-    setRooms(prev => [...prev, newRoom]);
-    
-    // Auto-join the new room
-    joinRoom(newRoom);
-
-    // Show success message
-    const successMessage: ChatMessageType = {
-      id: Date.now().toString(),
-      user: 'System',
-      message: `✅ Video "${title}" added successfully! Now playing...`,
-      timestamp: new Date()
-    };
-    setChatMessages(prev => [...prev, successMessage]);
-  };
+  const isHost = currentRoom?.hostName === username;
 
   return (
     <div className="max-w-md mx-auto bg-gray-800 min-h-screen flex flex-col border-l border-r border-gray-700">
       <AdminPanel isOpen={isAdminPanelOpen} onClose={() => setIsAdminPanelOpen(false)} />
-      
-      {isVideoLinkInputOpen && (
-        <VideoLinkInput
-          onAddVideo={handleAddVideo}
-          onClose={() => setIsVideoLinkInputOpen(false)}
-        />
-      )}
 
       {/* Header */}
       <header className="bg-gradient-to-r from-gray-900 to-gray-950 text-white p-4 shadow-lg border-b border-gray-800">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-3">
+            {currentRoom && (
+              <Button
+                onClick={leaveRoom}
+                className="bg-transparent hover:bg-gray-700 p-2 rounded-full mr-2"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            )}
             <Youtube className="text-red-600 w-8 h-8" />
-            <h1 className="font-bold text-2xl bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
-              YouTube Party
+            <h1 className="font-bold text-xl bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
+              {currentRoom ? currentRoom.name : "YouTube Party"}
             </h1>
           </div>
           <div className="flex items-center space-x-4">
             <Button
               onClick={() => setIsAdminPanelOpen(true)}
-              className="bg-gradient-to-r from-red-600 to-pink-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg hover:shadow-red-500/30 transition-all"
+              className="bg-gradient-to-r from-red-600 to-pink-600 text-white px-3 py-2 rounded-full text-sm font-medium shadow-lg hover:shadow-red-500/30 transition-all"
             >
-              Admin Panel
+              Admin
             </Button>
             <Button className="bg-gray-800 hover:bg-gray-700 p-3 rounded-full">
               <User className="w-5 h-5" />
@@ -247,143 +312,151 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-4">
-        {/* Current Video */}
-        <div className="mb-8">
-          <div className="rounded-2xl overflow-hidden relative pt-[56.25%] mb-4 bg-black shadow-xl border border-gray-800">
-            <div className="absolute inset-0">
-              {currentRoom && currentVideoUrl ? (
-                <iframe
-                  ref={iframeRef}
-                  src={currentVideoUrl}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title="YouTube Video Player"
+        {currentRoom ? (
+          // Inside Room View
+          <>
+            {/* Current Video Player */}
+            <div className="mb-6">
+              <div className="rounded-2xl overflow-hidden relative pt-[56.25%] mb-4 bg-black shadow-xl border border-gray-800">
+                <div className="absolute inset-0">
+                  {currentVideo && currentVideoUrl ? (
+                    <iframe
+                      ref={iframeRef}
+                      src={currentVideoUrl}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title="YouTube Video Player"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+                      <div className="text-center">
+                        <Youtube className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                        <p className="text-gray-400 text-lg font-medium">No video playing</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h2 className="font-bold text-lg text-white">
+                    {currentVideo ? currentVideo.title : "No video selected"}
+                  </h2>
+                  <p className="text-gray-400 text-sm">
+                    {currentRoom.viewers} viewers • Live • Host: {currentRoom.hostName || 'Host'}
+                  </p>
+                </div>
+                <Button onClick={shareRoom} className="bg-black text-white p-2 rounded-full hover:bg-gray-700">
+                  <Share className="w-5 h-5" />
+                </Button>
+              </div>
+
+              <div className="flex space-x-2 mb-4">
+                <Button
+                  onClick={togglePlayPause}
+                  disabled={!currentVideo}
+                  className={`flex-1 py-3 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all ${
+                    currentVideo 
+                      ? (isPlaying ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white')
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                  <span>{isPlaying ? 'Pause' : 'Play'}</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Room Video Manager */}
+            <RoomVideoManager
+              roomId={currentRoom.id}
+              currentVideo={currentVideo}
+              videoQueue={videoQueue}
+              onVideoSelect={handleVideoSelect}
+              onVideoAdd={handleVideoAdd}
+              onVideoRemove={handleVideoRemove}
+              isHost={isHost}
+              username={username}
+            />
+
+            {/* Chat Section */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-xl bg-gradient-to-r from-pink-500 to-red-500 bg-clip-text text-transparent">
+                  Live Chat
+                </h3>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-gray-400">{currentRoom.viewers} online</span>
+                </div>
+              </div>
+
+              <div
+                ref={chatContainerRef}
+                className="bg-gray-800/50 rounded-2xl p-4 h-72 overflow-y-auto mb-4 border border-gray-700 backdrop-blur-sm"
+              >
+                <div className="space-y-3">
+                  {chatMessages.map((message) => (
+                    <ChatMessage key={message.id} message={message} currentUser={username} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex space-x-2">
+                <Input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  className="flex-1 border-gray-600 bg-gray-700 text-white placeholder-gray-400 focus:ring-gray-500"
                 />
-              ) : (
+                <Button 
+                  onClick={sendMessage} 
+                  disabled={!newMessage.trim()}
+                  className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-4 py-2 rounded-lg hover:from-pink-600 hover:to-red-600 transition-all disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          // Room Selection View
+          <>
+            <div className="mb-8">
+              <div className="rounded-2xl overflow-hidden relative pt-[56.25%] mb-4 bg-black shadow-xl border border-gray-800">
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
                   <div className="text-center">
                     <Youtube className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                     <p className="text-gray-400 text-lg font-medium">Join a room to start watching</p>
-                    <p className="text-gray-500 text-sm mt-2">Select any room below or add your own video</p>
+                    <p className="text-gray-500 text-sm mt-2">Select any room below to join the party</p>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h2 className="font-bold text-lg text-white">
-                {currentRoom ? currentRoom.name : "Join a room to start watching"}
-              </h2>
-              <p className="text-gray-400 text-sm">
-                {currentRoom ? `${currentRoom.viewers} viewers • Live chat active • Host: ${currentRoom.hostName || 'Host'}` : "0 viewers • Select a room to join"}
-              </p>
-            </div>
-            <Button onClick={shareRoom} className="bg-black text-white p-2 rounded-full hover:bg-gray-700 transition-colors">
-              <Share className="w-5 h-5" />
-            </Button>
-          </div>
-
-          <div className="flex space-x-2 mb-4">
-            <Button
-              onClick={togglePlayPause}
-              disabled={!currentRoom}
-              className={`flex-1 py-3 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all ${
-                currentRoom 
-                  ? (isPlaying ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white')
-                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-              <span>{isPlaying ? 'Pause Video' : 'Play Video'}</span>
-            </Button>
-          </div>
-
-          <div className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                {currentRoom ? currentRoom.name.charAt(0) : 'H'}
               </div>
-              <span className="font-medium text-white">
-                {currentRoom ? `${currentRoom.hostName || 'Host'}` : 'Room Host'}
-              </span>
             </div>
-            <Button className="bg-black text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-800 transition-colors">
-              Follow
-            </Button>
-          </div>
-        </div>
 
-        {/* Room Selection */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-bold text-lg text-white">Available Rooms ({rooms.length})</h3>
-            <Button 
-              onClick={() => setIsVideoLinkInputOpen(true)}
-              className="text-blue-400 text-sm font-medium bg-transparent hover:bg-gray-700 px-3 py-1 rounded-lg border border-blue-400 hover:border-blue-300"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Add Video
-            </Button>
-          </div>
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-lg text-white">Available Rooms ({rooms.length})</h3>
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {rooms.map((room) => (
-              <RoomCard 
-                key={room.id} 
-                room={room} 
-                onClick={() => joinRoom(room)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Chat Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-xl bg-gradient-to-r from-pink-500 to-red-500 bg-clip-text text-transparent">
-              Live Chat
-            </h3>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-xs text-gray-400">{currentRoom ? currentRoom.viewers : mockUsers.filter(u => u.isOnline).length} online</span>
+              <div className="grid grid-cols-2 gap-3">
+                {rooms.map((room) => (
+                  <RoomCard 
+                    key={room.id} 
+                    room={room} 
+                    onClick={() => joinRoom(room)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div
-            ref={chatContainerRef}
-            className="bg-gray-800/50 rounded-2xl p-4 h-72 overflow-y-auto mb-4 border border-gray-700 backdrop-blur-sm"
-          >
-            <div className="space-y-3">
-              {chatMessages.map((message) => (
-                <ChatMessage key={message.id} message={message} currentUser={username} />
-              ))}
-            </div>
-          </div>
-
-          <div className="flex space-x-2">
-            <Input
-              type="text"
-              placeholder={currentRoom ? "Type a message..." : "Join a room to chat..."}
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              disabled={!currentRoom}
-              className="flex-1 border-gray-600 bg-gray-700 text-white placeholder-gray-400 focus:ring-gray-500 disabled:opacity-50"
-            />
-            <Button 
-              onClick={sendMessage} 
-              disabled={!currentRoom || !newMessage.trim()}
-              className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-4 py-2 rounded-lg hover:from-pink-600 hover:to-red-600 transition-all disabled:opacity-50"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </Button>
-          </div>
-        </div>
+          </>
+        )}
       </main>
 
       {/* Bottom Navigation */}
@@ -396,7 +469,7 @@ const Index = () => {
             <Search className="w-5 h-5" />
           </Button>
           <Button 
-            onClick={() => setIsVideoLinkInputOpen(true)}
+            onClick={() => currentRoom ? {} : {}}
             className="p-3 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-full shadow-lg hover:shadow-pink-500/30 transition-all"
           >
             <Plus className="w-5 h-5" />
