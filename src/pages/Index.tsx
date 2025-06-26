@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Share, Users, Home, Search, Plus, Settings, User, Youtube, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,12 @@ import {
   getRoomById, 
   getChatMessagesByRoom, 
   addChatMessage,
-  addNewVideo
+  addNewVideo,
+  updateRoomViewers,
+  addUserSession,
+  updateUserSession,
+  getUserById,
+  getRoomStats
 } from '@/data/mockData';
 
 interface Room {
@@ -53,6 +57,7 @@ const Index = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [showAdBanner, setShowAdBanner] = useState(true);
+  const [showRoomAd, setShowRoomAd] = useState(true);
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
   const [rooms, setRooms] = useState<Room[]>(mockRooms);
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
@@ -60,7 +65,9 @@ const Index = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  // Generate random user
   const username = `User${Math.floor(Math.random() * 1000)}`;
+  const currentUser = getUserById('1') || mockUsers[0]; // Default to first user
 
   useEffect(() => {
     setChatMessages(mockChatMessages.slice(0, 3));
@@ -72,8 +79,19 @@ const Index = () => {
     }
   }, [chatMessages]);
 
+  // Auto-hide room ad after 10 seconds
+  useEffect(() => {
+    if (currentRoom && showRoomAd) {
+      const timer = setTimeout(() => {
+        setShowRoomAd(false);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentRoom, showRoomAd]);
+
   const joinRoom = (room: Room) => {
     setCurrentRoom(room);
+    setShowRoomAd(true); // Show ad when entering room
     
     // Set initial video from room
     const initialVideo: Video = {
@@ -104,14 +122,24 @@ const Index = () => {
       setChatMessages([welcomeMessage]);
     }
 
-    // Update room viewer count
+    // Update room viewer count and add user session
+    updateRoomViewers(room.id, true);
+    addUserSession(currentUser.id, room.id);
     setRooms(prev => prev.map(r => 
       r.id === room.id ? { ...r, viewers: r.viewers + 1 } : r
     ));
+
+    // Show room stats
+    const stats = getRoomStats(room.id);
+    if (stats) {
+      console.log(`Room stats for ${room.name}:`, stats);
+    }
   };
 
   const leaveRoom = () => {
     if (currentRoom) {
+      updateRoomViewers(currentRoom.id, false);
+      updateUserSession(currentUser.id, currentRoom.id, false);
       setRooms(prev => prev.map(r => 
         r.id === currentRoom.id ? { ...r, viewers: Math.max(0, r.viewers - 1) } : r
       ));
@@ -122,6 +150,7 @@ const Index = () => {
     setCurrentVideoUrl('');
     setIsPlaying(false);
     setChatMessages([]);
+    setShowRoomAd(false);
   };
 
   const togglePlayPause = () => {
@@ -223,7 +252,7 @@ const Index = () => {
       
       setNewMessage('');
 
-      // Simulate responses
+      // Simulate responses with enhanced logic
       setTimeout(() => {
         const responses = [
           "Great choice!", 
@@ -232,7 +261,10 @@ const Index = () => {
           "What's next?",
           "Nice one! 👍",
           "Let's watch this!",
-          "Good addition to the queue!"
+          "Good addition to the queue!",
+          "This is awesome! 🔥",
+          "Perfect timing!",
+          "Can't wait to see this!"
         ];
         const response: ChatMessageType = {
           id: (Date.now() + 1).toString(),
@@ -305,8 +337,8 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Ad Banner */}
-      {showAdBanner && (
+      {/* Ad Banner - Top Level */}
+      {showAdBanner && !currentRoom && (
         <AdBanner onClose={() => setShowAdBanner(false)} />
       )}
 
@@ -315,6 +347,14 @@ const Index = () => {
         {currentRoom ? (
           // Inside Room View
           <>
+            {/* Room Ad Banner */}
+            {showRoomAd && (
+              <AdBanner 
+                onClose={() => setShowRoomAd(false)} 
+                inRoom={true}
+              />
+            )}
+
             {/* Current Video Player */}
             <div className="mb-6">
               <div className="rounded-2xl overflow-hidden relative pt-[56.25%] mb-4 bg-black shadow-xl border border-gray-800">
@@ -346,6 +386,9 @@ const Index = () => {
                   </h2>
                   <p className="text-gray-400 text-sm">
                     {currentRoom.viewers} viewers • Live • Host: {currentRoom.hostName || 'Host'}
+                  </p>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Peak: {currentRoom.maxViewers || currentRoom.viewers} viewers • Total watch time: {Math.floor((currentRoom.totalWatchTime || 0) / 60)} minutes
                   </p>
                 </div>
                 <Button onClick={shareRoom} className="bg-black text-white p-2 rounded-full hover:bg-gray-700">
