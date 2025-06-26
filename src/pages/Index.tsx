@@ -31,14 +31,15 @@ const Index = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [showAdBanner, setShowAdBanner] = useState(true);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [currentVideoUrl, setCurrentVideoUrl] = useState('');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const rooms: Room[] = [
     { id: 1, name: "Chill Music Vibes", category: "Pop, Rock, Hip Hop", viewers: 12, videoId: "5qap5aO4i9A" },
     { id: 2, name: "Gaming Streamers", category: "Live Gameplay", viewers: 8, videoId: "dQw4w9WgXcQ" },
-    { id: 3, name: "Movie Night", category: "Classic Films", viewers: 24, videoId: "movie123" },
-    { id: 4, name: "Study Focus", category: "Lofi Beats", viewers: 5, videoId: "lofi456" }
+    { id: 3, name: "Movie Night", category: "Classic Films", viewers: 24, videoId: "9bZkp7q19f0" },
+    { id: 4, name: "Study Focus", category: "Lofi Beats", viewers: 5, videoId: "jfKfPfyJRdk" }
   ];
 
   const username = `User${Math.floor(Math.random() * 1000)}`;
@@ -61,6 +62,10 @@ const Index = () => {
 
   const joinRoom = (room: Room) => {
     setCurrentRoom(room);
+    const embedUrl = `https://www.youtube.com/embed/${room.videoId}?autoplay=1&enablejsapi=1&origin=${window.location.origin}`;
+    setCurrentVideoUrl(embedUrl);
+    setIsPlaying(true);
+    
     // Clear chat and add welcome message
     const welcomeMessage: ChatMessageType = {
       id: Date.now().toString(),
@@ -68,16 +73,17 @@ const Index = () => {
       message: `You joined ${room.name}`,
       timestamp: new Date()
     };
-    setChatMessages(prev => [...prev, welcomeMessage]);
+    setChatMessages([welcomeMessage]);
   };
 
   const togglePlayPause = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
-      }
+    if (iframeRef.current && currentRoom) {
+      const iframe = iframeRef.current;
+      const newUrl = isPlaying 
+        ? `https://www.youtube.com/embed/${currentRoom.videoId}?autoplay=0&enablejsapi=1&origin=${window.location.origin}`
+        : `https://www.youtube.com/embed/${currentRoom.videoId}?autoplay=1&enablejsapi=1&origin=${window.location.origin}`;
+      
+      iframe.src = newUrl;
       setIsPlaying(!isPlaying);
     }
   };
@@ -105,6 +111,21 @@ const Index = () => {
         };
         setChatMessages(prev => [...prev, response]);
       }, 1000);
+    }
+  };
+
+  const shareRoom = () => {
+    if (currentRoom) {
+      const shareUrl = `${window.location.origin}?room=${currentRoom.id}`;
+      navigator.clipboard.writeText(shareUrl);
+      
+      const shareMessage: ChatMessageType = {
+        id: Date.now().toString(),
+        user: 'System',
+        message: 'Room link copied to clipboard!',
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, shareMessage]);
     }
   };
 
@@ -146,20 +167,21 @@ const Index = () => {
         <div className="mb-8">
           <div className="rounded-2xl overflow-hidden relative pt-[56.25%] mb-4 bg-black shadow-xl border border-gray-800">
             <div className="absolute inset-0">
-              {currentRoom ? (
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
-                >
-                  {/* Placeholder for video source */}
-                </video>
+              {currentRoom && currentVideoUrl ? (
+                <iframe
+                  ref={iframeRef}
+                  src={currentVideoUrl}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title="YouTube Video Player"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
                   <div className="text-center">
                     <Youtube className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400">Join a room to start watching</p>
+                    <p className="text-gray-400 text-lg font-medium">Join a room to start watching</p>
+                    <p className="text-gray-500 text-sm mt-2">Select any room below to begin</p>
                   </div>
                 </div>
               )}
@@ -172,10 +194,10 @@ const Index = () => {
                 {currentRoom ? currentRoom.name : "Join a room to start watching"}
               </h2>
               <p className="text-gray-400 text-sm">
-                {currentRoom ? `${currentRoom.viewers} viewers • Live chat` : "0 viewers • 0 comments"}
+                {currentRoom ? `${currentRoom.viewers} viewers • Live chat active` : "0 viewers • Select a room to join"}
               </p>
             </div>
-            <Button className="bg-black text-white p-2 rounded-full">
+            <Button onClick={shareRoom} className="bg-black text-white p-2 rounded-full hover:bg-gray-700 transition-colors">
               <Share className="w-5 h-5" />
             </Button>
           </div>
@@ -183,23 +205,28 @@ const Index = () => {
           <div className="flex space-x-2 mb-4">
             <Button
               onClick={togglePlayPause}
-              className={`flex-1 py-2 rounded-lg flex items-center justify-center space-x-2 ${
-                isPlaying ? 'bg-gray-200 text-gray-800' : 'bg-black text-white'
+              disabled={!currentRoom}
+              className={`flex-1 py-3 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all ${
+                currentRoom 
+                  ? (isPlaying ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white')
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
               }`}
             >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              <span>{isPlaying ? 'Pause' : 'Play'}</span>
+              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+              <span>{isPlaying ? 'Pause Video' : 'Play Video'}</span>
             </Button>
           </div>
 
           <div className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                H
+                {currentRoom ? currentRoom.name.charAt(0) : 'H'}
               </div>
-              <span className="font-medium text-white">Room Host</span>
+              <span className="font-medium text-white">
+                {currentRoom ? `${currentRoom.name} Host` : 'Room Host'}
+              </span>
             </div>
-            <Button className="bg-black text-white px-3 py-1 rounded-lg text-sm">
+            <Button className="bg-black text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-800 transition-colors">
               Follow
             </Button>
           </div>
@@ -208,15 +235,19 @@ const Index = () => {
         {/* Room Selection */}
         <div className="mb-6">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="font-bold text-lg text-white">Join a Room</h3>
-            <Button className="text-blue-400 text-sm font-medium bg-transparent hover:bg-gray-700">
+            <h3 className="font-bold text-lg text-white">Available Rooms</h3>
+            <Button className="text-blue-400 text-sm font-medium bg-transparent hover:bg-gray-700 px-3 py-1 rounded-lg">
               Create Room
             </Button>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             {rooms.map((room) => (
-              <RoomCard key={room.id} room={room} onClick={() => joinRoom(room)} />
+              <RoomCard 
+                key={room.id} 
+                room={room} 
+                onClick={() => joinRoom(room)}
+              />
             ))}
           </div>
         </div>
@@ -253,7 +284,10 @@ const Index = () => {
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
               className="flex-1 border-gray-600 bg-gray-700 text-white placeholder-gray-400 focus:ring-gray-500"
             />
-            <Button onClick={sendMessage} className="bg-black text-white px-4 py-2 rounded-lg">
+            <Button 
+              onClick={sendMessage} 
+              className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-4 py-2 rounded-lg hover:from-pink-600 hover:to-red-600 transition-all"
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
@@ -265,19 +299,19 @@ const Index = () => {
       {/* Bottom Navigation */}
       <nav className="bg-gray-900/80 border-t border-gray-800 p-3 backdrop-blur-lg">
         <div className="flex justify-around items-center">
-          <Button className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent">
+          <Button className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent transition-all">
             <Home className="w-5 h-5" />
           </Button>
-          <Button className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent">
+          <Button className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent transition-all">
             <Search className="w-5 h-5" />
           </Button>
-          <Button className="p-3 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-full shadow-lg hover:shadow-pink-500/30">
+          <Button className="p-3 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-full shadow-lg hover:shadow-pink-500/30 transition-all">
             <Plus className="w-5 h-5" />
           </Button>
-          <Button className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent">
+          <Button className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent transition-all">
             <Users className="w-5 h-5" />
           </Button>
-          <Button className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent">
+          <Button className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent transition-all">
             <Settings className="w-5 h-5" />
           </Button>
         </div>
