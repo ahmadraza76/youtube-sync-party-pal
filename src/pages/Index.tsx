@@ -10,10 +10,15 @@ import { useRoomState } from '@/hooks/useRoomState';
 import { useChatState } from '@/hooks/useChatState';
 import { ChatMessageType, Video } from '@/types';
 import { addNewVideo } from '@/data';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [showAdBanner, setShowAdBanner] = useState(true);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showUsers, setShowUsers] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const { toast } = useToast();
 
   const {
     currentRoom,
@@ -125,6 +130,48 @@ const Index = () => {
     }
   };
 
+  // Navigation handlers
+  const handleGoHome = () => {
+    if (currentRoom) {
+      handleLeaveRoom();
+    }
+    toast({
+      title: "Home",
+      description: "Navigated to home page",
+    });
+  };
+
+  const handleOpenSearch = () => {
+    setShowSearch(!showSearch);
+    toast({
+      title: "Search",
+      description: showSearch ? "Search closed" : "Search opened",
+    });
+  };
+
+  const handleCreateRoom = () => {
+    toast({
+      title: "Create Room",
+      description: "Room creation feature coming soon!",
+    });
+  };
+
+  const handleOpenUsers = () => {
+    setShowUsers(!showUsers);
+    toast({
+      title: "Users",
+      description: showUsers ? "Users panel closed" : "Users panel opened",
+    });
+  };
+
+  const handleOpenSettings = () => {
+    setShowSettings(!showSettings);
+    toast({
+      title: "Settings",
+      description: showSettings ? "Settings closed" : "Settings opened",
+    });
+  };
+
   return (
     <div className="max-w-md mx-auto bg-gray-800 min-h-screen flex flex-col border-l border-r border-gray-700">
       <AdminPanel isOpen={isAdminPanelOpen} onClose={() => setIsAdminPanelOpen(false)} />
@@ -165,6 +212,48 @@ const Index = () => {
         <AdBanner onClose={() => setShowAdBanner(false)} />
       )}
 
+      {/* Search Panel */}
+      {showSearch && (
+        <div className="bg-gray-700 p-4 border-b border-gray-600">
+          <h3 className="text-white font-medium mb-2">Search Rooms</h3>
+          <input 
+            type="text" 
+            placeholder="Search for rooms..." 
+            className="w-full p-2 rounded bg-gray-600 text-white placeholder-gray-400"
+          />
+        </div>
+      )}
+
+      {/* Users Panel */}
+      {showUsers && (
+        <div className="bg-gray-700 p-4 border-b border-gray-600">
+          <h3 className="text-white font-medium mb-2">Online Users</h3>
+          <div className="text-gray-300">
+            <p>• {username} (You)</p>
+            <p>• User123</p>
+            <p>• MovieFan456</p>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="bg-gray-700 p-4 border-b border-gray-600">
+          <h3 className="text-white font-medium mb-2">Settings</h3>
+          <div className="space-y-2">
+            <button className="block w-full text-left p-2 text-gray-300 hover:bg-gray-600 rounded">
+              Profile Settings
+            </button>
+            <button className="block w-full text-left p-2 text-gray-300 hover:bg-gray-600 rounded">
+              Notifications
+            </button>
+            <button className="block w-full text-left p-2 text-gray-300 hover:bg-gray-600 rounded">
+              Privacy
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-4">
         {currentRoom ? (
@@ -194,7 +283,14 @@ const Index = () => {
       </main>
 
       {/* Bottom Navigation */}
-      <Navigation currentRoom={currentRoom} />
+      <Navigation 
+        currentRoom={currentRoom}
+        onCreateRoom={handleCreateRoom}
+        onGoHome={handleGoHome}
+        onOpenSearch={handleOpenSearch}
+        onOpenUsers={handleOpenUsers}
+        onOpenSettings={handleOpenSettings}
+      />
     </div>
   );
 };
