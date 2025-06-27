@@ -1,10 +1,9 @@
-
 import AdBanner from '@/components/AdBanner';
 import VideoPlayer from '@/components/VideoPlayer';
 import RoomVideoManager from '@/components/RoomVideoManager';
 import ChatSection from '@/components/ChatSection';
 import { Room, Video, ChatMessageType } from '@/types';
-import { addNewVideo } from '@/data/mockData';
+import { addNewVideo } from '@/data';
 
 interface RoomViewProps {
   currentRoom: Room;

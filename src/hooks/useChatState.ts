@@ -1,11 +1,10 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { ChatMessageType } from '@/types';
 import { 
   mockChatMessages, 
   getChatMessagesByRoom, 
   addChatMessage 
-} from '@/data/mockData';
+} from '@/data';
 
 export const useChatState = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([]);

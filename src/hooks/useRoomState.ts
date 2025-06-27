@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Room, Video } from '@/types';
 import { 
@@ -9,7 +8,7 @@ import {
   getUserById,
   getRoomStats,
   mockUsers
-} from '@/data/mockData';
+} from '@/data';
 
 export const useRoomState = () => {
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);

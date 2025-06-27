@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { ArrowLeft, Youtube, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import Navigation from '@/components/Navigation';
 import { useRoomState } from '@/hooks/useRoomState';
 import { useChatState } from '@/hooks/useChatState';
 import { ChatMessageType, Video } from '@/types';
-import { addNewVideo } from '@/data/mockData';
+import { addNewVideo } from '@/data';
 
 const Index = () => {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
