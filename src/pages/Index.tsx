@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Share, Users, Home, Search, Plus, Settings, User, Youtube, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,9 +29,15 @@ interface Room {
   category: string;
   viewers: number;
   videoId: string;
-  hostName?: string;
-  isLive?: boolean;
-  description?: string;
+  hostName: string;
+  isLive: boolean;
+  description: string;
+  createdAt: Date;
+  tags: string[];
+  maxViewers: number;
+  totalWatchTime: number;
+  isPublic: boolean;
+  password?: string;
 }
 
 interface ChatMessageType {
@@ -203,13 +210,14 @@ const Index = () => {
     // Add to queue
     setVideoQueue(prev => [...prev, newVideo]);
     
-    // Add to mock data
+    // Add to mock data with category
     addNewVideo({
       title,
       videoId,
       duration: 'N/A',
       thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-      addedBy: username
+      addedBy: username,
+      category: currentRoom?.category || 'General'
     });
 
     // Show success message
@@ -388,7 +396,7 @@ const Index = () => {
                     {currentRoom.viewers} viewers • Live • Host: {currentRoom.hostName || 'Host'}
                   </p>
                   <p className="text-gray-500 text-xs mt-1">
-                    Peak: {currentRoom.maxViewers || currentRoom.viewers} viewers • Total watch time: {Math.floor((currentRoom.totalWatchTime || 0) / 60)} minutes
+                    Peak: {currentRoom.maxViewers} viewers • Total watch time: {Math.floor(currentRoom.totalWatchTime / 60)} minutes
                   </p>
                 </div>
                 <Button onClick={shareRoom} className="bg-black text-white p-2 rounded-full hover:bg-gray-700">
