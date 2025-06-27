@@ -7,6 +7,7 @@ export const useAppState = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCreateRoom, setShowCreateRoom] = useState(false);
 
   return {
     isAdminPanelOpen,
@@ -18,6 +19,8 @@ export const useAppState = () => {
     showUsers,
     setShowUsers,
     showSettings,
-    setShowSettings
+    setShowSettings,
+    showCreateRoom,
+    setShowCreateRoom
   };
 };

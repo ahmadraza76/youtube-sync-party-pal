@@ -11,8 +11,10 @@ import { useChatState } from '@/hooks/useChatState';
 import { useAppState } from '@/hooks/useAppState';
 import { useMessageHandlers } from '@/hooks/useMessageHandlers';
 import { useNavigationHandlers } from '@/hooks/useNavigationHandlers';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
+  const { toast } = useToast();
   const appState = useAppState();
   const {
     currentRoom,
@@ -71,8 +73,18 @@ const Index = () => {
     showUsers: appState.showUsers,
     setShowUsers: appState.setShowUsers,
     showSettings: appState.showSettings,
-    setShowSettings: appState.setShowSettings
+    setShowSettings: appState.setShowSettings,
+    showCreateRoom: appState.showCreateRoom,
+    setShowCreateRoom: appState.setShowCreateRoom
   });
+
+  const handleRoomCreate = (roomName: string, category: string) => {
+    toast({
+      title: "🎉 Room Created!",
+      description: `${roomName} in ${category} category has been created successfully`,
+    });
+    appState.setShowCreateRoom(false);
+  };
 
   return (
     <div className="max-w-md mx-auto bg-gray-800 min-h-screen flex flex-col border-l border-r border-gray-700">
@@ -96,7 +108,9 @@ const Index = () => {
         showSearch={appState.showSearch}
         showUsers={appState.showUsers}
         showSettings={appState.showSettings}
+        showCreateRoom={appState.showCreateRoom}
         username={username}
+        onRoomCreate={handleRoomCreate}
       />
 
       {/* Main Content */}

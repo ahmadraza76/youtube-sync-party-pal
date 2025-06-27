@@ -10,6 +10,8 @@ interface UseNavigationHandlersProps {
   setShowUsers: (show: boolean) => void;
   showSettings: boolean;
   setShowSettings: (show: boolean) => void;
+  showCreateRoom: boolean;
+  setShowCreateRoom: (show: boolean) => void;
 }
 
 export const useNavigationHandlers = ({
@@ -20,7 +22,9 @@ export const useNavigationHandlers = ({
   showUsers,
   setShowUsers,
   showSettings,
-  setShowSettings
+  setShowSettings,
+  showCreateRoom,
+  setShowCreateRoom
 }: UseNavigationHandlersProps) => {
   const { toast } = useToast();
 
@@ -28,40 +32,62 @@ export const useNavigationHandlers = ({
     if (currentRoom) {
       handleLeaveRoom();
     }
+    // Close all panels when going home
+    setShowSearch(false);
+    setShowUsers(false);
+    setShowSettings(false);
+    setShowCreateRoom(false);
     toast({
-      title: "Home",
-      description: "Navigated to home page",
+      title: "🏠 Home",
+      description: "Welcome back to home page",
     });
   };
 
   const handleOpenSearch = () => {
+    // Close other panels first
+    setShowUsers(false);
+    setShowSettings(false);
+    setShowCreateRoom(false);
     setShowSearch(!showSearch);
     toast({
-      title: "Search",
-      description: showSearch ? "Search closed" : "Search opened",
+      title: "🔍 Search",
+      description: showSearch ? "Search panel closed" : "Search rooms and content",
     });
   };
 
   const handleCreateRoom = () => {
+    // Close other panels first
+    setShowSearch(false);
+    setShowUsers(false);
+    setShowSettings(false);
+    setShowCreateRoom(!showCreateRoom);
     toast({
-      title: "Create Room",
-      description: "Room creation feature coming soon!",
+      title: "➕ Create Room",
+      description: showCreateRoom ? "Create panel closed" : "Create your own room",
     });
   };
 
   const handleOpenUsers = () => {
+    // Close other panels first
+    setShowSearch(false);
+    setShowSettings(false);
+    setShowCreateRoom(false);
     setShowUsers(!showUsers);
     toast({
-      title: "Users",
-      description: showUsers ? "Users panel closed" : "Users panel opened",
+      title: "👥 Users",
+      description: showUsers ? "Users panel closed" : "View online users",
     });
   };
 
   const handleOpenSettings = () => {
+    // Close other panels first
+    setShowSearch(false);
+    setShowUsers(false);
+    setShowCreateRoom(false);
     setShowSettings(!showSettings);
     toast({
-      title: "Settings",
-      description: showSettings ? "Settings closed" : "Settings opened",
+      title: "⚙️ Settings",
+      description: showSettings ? "Settings closed" : "Configure your preferences",
     });
   };
 

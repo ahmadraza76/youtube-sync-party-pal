@@ -20,72 +20,86 @@ const Navigation = ({
   onOpenSettings
 }: NavigationProps) => {
   const handleHomeClick = () => {
-    console.log('Home button clicked');
+    console.log('🏠 Home button clicked');
     if (onGoHome) {
       onGoHome();
     }
   };
 
   const handleSearchClick = () => {
-    console.log('Search button clicked');
+    console.log('🔍 Search button clicked');
     if (onOpenSearch) {
       onOpenSearch();
     }
   };
 
   const handleCreateClick = () => {
-    console.log('Create room button clicked');
+    console.log('➕ Create room button clicked');
     if (onCreateRoom) {
       onCreateRoom();
     }
   };
 
   const handleUsersClick = () => {
-    console.log('Users button clicked');
+    console.log('👥 Users button clicked');
     if (onOpenUsers) {
       onOpenUsers();
     }
   };
 
   const handleSettingsClick = () => {
-    console.log('Settings button clicked');
+    console.log('⚙️ Settings button clicked');
     if (onOpenSettings) {
       onOpenSettings();
     }
   };
 
   return (
-    <nav className="bg-gray-900/80 border-t border-gray-800 p-3 backdrop-blur-lg">
+    <nav className="bg-gray-900/90 border-t border-gray-700 p-3 backdrop-blur-lg shadow-lg">
       <div className="flex justify-around items-center">
+        {/* 🏠 Home Button */}
         <Button 
           onClick={handleHomeClick}
-          className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent transition-all"
+          className="flex flex-col items-center p-3 text-gray-400 hover:text-white rounded-xl hover:bg-gray-800/60 bg-transparent transition-all space-y-1 min-h-[60px]"
         >
           <Home className="w-5 h-5" />
+          <span className="text-xs font-medium">Home</span>
         </Button>
+
+        {/* 🔍 Search Button */}
         <Button 
           onClick={handleSearchClick}
-          className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent transition-all"
+          className="flex flex-col items-center p-3 text-gray-400 hover:text-blue-400 rounded-xl hover:bg-gray-800/60 bg-transparent transition-all space-y-1 min-h-[60px]"
         >
           <Search className="w-5 h-5" />
+          <span className="text-xs font-medium">Search</span>
         </Button>
+
+        {/* ➕ Create Room Button - Central highlighted button */}
         <Button 
           onClick={handleCreateClick}
-          className="p-3 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-full shadow-lg hover:shadow-pink-500/30 transition-all"
+          className="flex flex-col items-center p-3 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-xl shadow-lg hover:shadow-pink-500/30 hover:from-pink-600 hover:to-red-600 transition-all space-y-1 min-h-[60px] transform hover:scale-105"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-6 h-6" />
+          <span className="text-xs font-bold">Create</span>
         </Button>
+
+        {/* 👥 Users Button */}
         <Button 
           onClick={handleUsersClick}
-          className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent transition-all"
+          className="flex flex-col items-center p-3 text-gray-400 hover:text-pink-400 rounded-xl hover:bg-gray-800/60 bg-transparent transition-all space-y-1 min-h-[60px]"
         >
           <Users className="w-5 h-5" />
+          <span className="text-xs font-medium">Users</span>
         </Button>
+
+        {/* ⚙️ Settings Button */}
         <Button 
           onClick={handleSettingsClick}
-          className="p-3 text-gray-400 hover:text-white rounded-full hover:bg-gray-800/50 bg-transparent transition-all"
+          className="flex flex-col items-center p-3 text-gray-400 hover:text-orange-400 rounded-xl hover:bg-gray-800/60 bg-transparent transition-all space-y-1 min-h-[60px]"
         >
           <Settings className="w-5 h-5" />
+          <span className="text-xs font-medium">Settings</span>
         </Button>
       </div>
     </nav>
